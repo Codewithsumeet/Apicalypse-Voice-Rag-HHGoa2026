@@ -1,0 +1,106 @@
+Folder PATH listing
+Volume serial number is 0000000E FC6A:5716
+C:.
+¦   structure.txt
+¦   
++---hhg-task2
+    ¦   .env.example
+    ¦   .gitignore
+    ¦   docker-compose.yml
+    ¦   Dockerfile
+    ¦   pyproject.toml
+    ¦   README.md
+    ¦   requirements.txt
+    ¦   
+    +---docs
+    ¦       ARCHITECTURE.md
+    ¦       CHUNKING_COMPARISON.md
+    ¦       DATASET_ANALYSIS.md
+    ¦       LATENCY_REPORT.md
+    ¦       PROJECT_STATE.md
+    ¦       
+    +---scripts
+    ¦       benchmark.py
+    ¦       compare_chunking.py
+    ¦       download_data.py
+    ¦       ingest.py
+    ¦       inspect_data.py
+    ¦       
+    +---src
+    ¦   ¦   config.py
+    ¦   ¦   __init__.py
+    ¦   ¦   
+    ¦   +---api
+    ¦   ¦   ¦   main.py
+    ¦   ¦   ¦   routes.py
+    ¦   ¦   ¦   __init__.py
+    ¦   ¦   ¦   
+    ¦   ¦   +---static
+    ¦   ¦           app.js
+    ¦   ¦           index.html
+    ¦   ¦           style.css
+    ¦   ¦           
+    ¦   +---chunking
+    ¦   ¦       base.py
+    ¦   ¦       factory.py
+    ¦   ¦       fixed_size.py
+    ¦   ¦       metadata_aware.py
+    ¦   ¦       semantic.py
+    ¦   ¦       __init__.py
+    ¦   ¦       
+    ¦   +---embeddings
+    ¦   ¦       multilingual.py
+    ¦   ¦       __init__.py
+    ¦   ¦       
+    ¦   +---generation
+    ¦   ¦       base.py
+    ¦   ¦       groq_llm.py
+    ¦   ¦       models.py
+    ¦   ¦       openai_llm.py
+    ¦   ¦       __init__.py
+    ¦   ¦       
+    ¦   +---guardrails
+    ¦   ¦       coverage.py
+    ¦   ¦       grounding.py
+    ¦   ¦       models.py
+    ¦   ¦       off_topic.py
+    ¦   ¦       unsafe_input.py
+    ¦   ¦       __init__.py
+    ¦   ¦       
+    ¦   +---harness
+    ¦   ¦       models.py
+    ¦   ¦       pipeline.py
+    ¦   ¦       retry.py
+    ¦   ¦       state.py
+    ¦   ¦       __init__.py
+    ¦   ¦       
+    ¦   +---retrieval
+    ¦   ¦       bm25.py
+    ¦   ¦       fusion.py
+    ¦   ¦       models.py
+    ¦   ¦       numpy_store.py
+    ¦   ¦       pinecone_store.py
+    ¦   ¦       __init__.py
+    ¦   ¦       
+    ¦   +---stt
+    ¦           base.py
+    ¦           elevenlabs_stt.py
+    ¦           models.py
+    ¦           __init__.py
+    ¦           
+    +---tests
+        ¦   __init__.py
+        ¦   
+        +---benchmark
+        ¦       test_latency.py
+        ¦       
+        +---integration
+        ¦       test_e2e.py
+        ¦       test_stt_pipeline.py
+        ¦       
+        +---unit
+                test_chunking.py
+                test_guardrails.py
+                test_harness.py
+                test_retrieval.py
+                

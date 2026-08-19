@@ -1,0 +1,57 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment variables / secrets
+.env
+*.env
+!.env.example
+vault/
+secrets/
+
+# Data files (large, downloaded)
+data/
+*.parquet
+*.jsonl
+
+# Agent state (internal tracking)
+agent_state/
+
+# Video assets
+videos/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Pytest
+.pytest_cache/
+htmlcov/
+
+# Logs
+*.log
+logs/
+
+# Docker
+.docker/
+
+# Model cache
+models_cache/

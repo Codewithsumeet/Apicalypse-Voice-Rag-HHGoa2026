@@ -1,0 +1,17 @@
+# Docker Compose for local development
+
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./docs:/app/docs
+    restart: unless-stopped

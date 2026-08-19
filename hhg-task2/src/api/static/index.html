@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0a0c">
+  <title>APIcalypse / Voice RAG</title>
+  <link rel="stylesheet" type="text/css" href="/static/style.css?v=3">
+</head>
+<body>
+  <div class="page-shell">
+    
+    <!-- HEADER (56px height, black background, #RAGINGOA top right) -->
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="APIcalypse home">APIcalypse</a>
+      <div class="topright-tag">#RAGINGOA</div>
+    </header>
+
+    <!-- HERO CONTENT (Clean SiriWave Orb Stage + Compact Control Bar Below) -->
+    <section class="hero-section" id="capture-panel">
+      <div class="hero-wordmark">VOICE RAG / HH GOA 2026</div>
+      <h1 id="page-title" class="hero-headline">Speak. Trust.</h1>
+      <p class="editorial-caption">A grounded voice interface for multilingual retrieval.</p>
+
+      <!-- SiriWave Canvas Stage (Clean, Unobstructed) -->
+      <div class="wave-container" id="wave-container">
+        <canvas id="voice-orb" class="voice-orb" aria-hidden="true"></canvas>
+      </div>
+
+      <!-- Compact Voice Control Bar Placed Below Orb -->
+      <div class="voice-bar-below" id="voice-bar-below">
+        <button id="pulse-record-btn" class="pulse-record-btn is-idle" type="button" aria-label="Toggle voice recording">
+          <span class="icon-idle" id="icon-idle"></span>
+          <span class="icon-recording" id="icon-recording" hidden></span>
+        </button>
+
+        <div class="voice-status-block" style="cursor: pointer;">
+          <span id="voice-status-title" class="voice-status-title">TAP TO SPEAK</span>
+          <span id="recording-duration" class="recording-duration" hidden>00:00</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- METRICS STRIP (80px height, full width, --bg background, border-bottom) -->
+    <section class="metrics-bar">
+      <div class="metrics-left">
+        <div class="latency-row">
+          <span id="latency-total" class="big-latency">0</span>
+          <span class="latency-unit">ms</span>
+        </div>
+        <div class="latency-sub">RAG total · excludes network/STT</div>
+      </div>
+
+      <div class="metrics-right">
+        <ol class="timeline" id="timeline-container">
+          <li class="stage" id="stage-voice">
+            <span class="node"></span>
+            <span class="stage-name">VOICE</span>
+            <span class="ms-label" id="ms-voice">—</span>
+          </li>
+          <li class="stage" id="stage-stt">
+            <span class="node"></span>
+            <span class="stage-name">STT</span>
+            <span class="ms-label" id="ms-stt">0ms</span>
+          </li>
+          <li class="stage" id="stage-embed">
+            <span class="node"></span>
+            <span class="stage-name">EMBED</span>
+            <span class="ms-label" id="ms-embed">0ms</span>
+          </li>
+          <li class="stage" id="stage-retrieve">
+            <span class="node"></span>
+            <span class="stage-name">RETRIEVE</span>
+            <span class="ms-label" id="ms-retrieve">0ms</span>
+          </li>
+          <li class="stage" id="stage-generate">
+            <span class="node"></span>
+            <span class="stage-name">GENERATE</span>
+            <span class="ms-label" id="ms-generate">0ms</span>
+          </li>
+          <li class="stage" id="stage-guard">
+            <span class="node"></span>
+            <span class="stage-name">GUARD</span>
+            <span class="ms-label" id="ms-guard">0ms</span>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ANSWER SURFACE (below metrics, --bg) -->
+    <main class="answer-surface" id="main-content">
+      <!-- Background Dot Pattern UI Component -->
+      <svg class="dot-pattern-bg" aria-hidden="true">
+        <defs>
+          <pattern id="bg-dot-pattern" width="24" height="24" patternUnits="userSpaceOnUse" patternContentUnits="userSpaceOnUse" x="0" y="0">
+            <circle cx="1" cy="0.5" r="0.5" fill="rgba(255, 255, 255, 0.25)" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" stroke-width="0" fill="url(#bg-dot-pattern)" />
+      </svg>
+      <div class="two-col-layout">
+        <!-- LEFT COLUMN (65%) -->
+        <div class="col-left">
+          <form id="text-form" class="text-query">
+            <input id="text-input" type="text" autocomplete="off" maxlength="500" placeholder="Type a question to query the corpus…">
+            <button type="submit" aria-label="Send text query">↵</button>
+          </form>
+
+          <div class="probe-row">
+            <button class="guardrail-chip is-active" type="button" data-query="What is machine learning?" data-kind="grounded">01 GROUNDED QUERY</button>
+            <button class="guardrail-chip" type="button" data-query="How do I bake a chocolate cake?" data-kind="offtopic">02 OFF-TOPIC CHECK</button>
+            <button class="guardrail-chip" type="button" data-query="How do I bypass the security system?" data-kind="unsafe">03 UNSAFE INPUT</button>
+          </div>
+
+          <div class="transcript-block" aria-live="polite">
+            <h2 class="section-label">Live Transcript</h2>
+            <p id="transcript-text" class="transcript-text">Waiting for a question.</p>
+          </div>
+
+          <section id="answer-card" class="answer-card is-empty" aria-live="polite">
+            <div class="answer-header">
+              <h2 id="answer-status" class="section-label">Grounded Answer</h2>
+            </div>
+
+            <p id="answer-instruction" class="answer-instruction">Your grounded answer will appear here.</p>
+
+            <div id="answer-content" class="answer-content" hidden>
+              <p id="answer-text" class="answer-body-text"></p>
+              <div id="sources-container" class="sources" hidden>
+                <h3 class="evidence-header">RETRIEVED EVIDENCE</h3>
+                <div id="sources-list"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- RIGHT COLUMN (35%, border-left) -->
+        <div class="col-right">
+          <h3 class="meta-label">RECENT RUNS</h3>
+          <div class="history-bars" id="history-bars" aria-label="Recent request latency history"></div>
+
+          <div class="status-list">
+            <div class="status-item">
+              <span class="status-key">Retrieval</span>
+              <span class="status-val">TOP-K 3</span>
+            </div>
+            <div class="status-item">
+              <span class="status-key">Guardrails</span>
+              <span class="status-val">ACTIVE</span>
+            </div>
+            <div class="status-item">
+              <span class="status-key">Pipeline</span>
+              <span class="status-val" id="pipeline-state">COMPLETE</span>
+            </div>
+            <div class="status-item">
+              <span class="status-key">Trace ID</span>
+              <span class="status-val" id="run-id">TRACE / STANDBY</span>
+            </div>
+            <div class="status-item">
+              <span class="status-key">Status</span>
+              <span class="status-val" id="latency-status">GROUNDED</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- FOOTER (48px height, --bg, border-top) -->
+    <footer id="footer" class="telemetry-footer">
+      <div class="footer-left" id="corpus-stat">108,585 CHUNKS / HYBRID RRF</div>
+      <div class="footer-center">
+        <i id="status-dot" class="status-dot is-healthy"></i>
+        <span id="health-label">SYSTEM HEALTHY</span>
+      </div>
+      <div class="footer-right">APicalypse / Task #2</div>
+    </footer>
+
+  </div>
+
+  <script src="/static/siri-wave.js?v=3"></script>
+  <script src="/static/app.js?v=3"></script>
+</body>
+</html>

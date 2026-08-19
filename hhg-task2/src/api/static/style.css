@@ -1,0 +1,665 @@
+/* Font definitions */
+@font-face { font-family: Vanguard; src: url('/static/fonts/Vanguard-Regular.otf') format('opentype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: HelveticaLocal; src: url('/static/fonts/Helvetica.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: HelveticaLocal; src: url('/static/fonts/Helvetica-Bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+
+/* Color tokens — Obsidian Dark Theme */
+:root {
+  --bg:        #0A0A0C;   /* dark obsidian black, full page */
+  --bg-dark:   #000000;   /* pure black for orb container */
+  --ink:       #FFFFFF;   /* pure white text */
+  --ink-mid:   #A1A1AA;   /* muted white/zinc secondary text */
+  --ink-faint: rgba(255, 255, 255, 0.15); /* white hairline dividers & lines */
+  --accent:    #D2691E;   /* orange accent */
+
+  --font-hero: Vanguard, Georgia, serif;
+  --font-sf: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sf);
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input {
+  font-family: var(--font-sf);
+  font-size: 15px;
+  color: inherit;
+}
+
+::selection {
+  background: #FFFFFF;
+  color: #0A0A0C;
+}
+
+.page-shell {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  background: var(--bg);
+  font-family: var(--font-sf);
+}
+
+/* =============================================================
+   HEADER (56px height, black background, #RAGINGOA top right)
+   ============================================================= */
+.topbar {
+  height: 56px;
+  padding: 0 48px;
+  background: var(--bg-dark);
+  border-bottom: 1px solid var(--ink-faint);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  font-family: var(--font-sf);
+}
+
+.brand {
+  font-size: 14px;
+  font-weight: 600;
+  color: #FFFFFF;
+  text-decoration: none;
+  letter-spacing: -0.01em;
+  font-family: var(--font-sf);
+}
+
+.topright-tag {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: +0.06em;
+  text-transform: uppercase;
+  color: var(--ink-mid);
+  font-family: var(--font-sf);
+}
+
+/* =============================================================
+   HERO CONTENT (Vanguard Headline, SF Pro for rest)
+   ============================================================= */
+.hero-section {
+  background: var(--bg-dark);
+  padding: 16px 48px 10px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: var(--font-sf);
+}
+
+.dot-pattern-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-wordmark {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: +0.06em;
+  text-transform: uppercase;
+  color: var(--ink-mid);
+  margin-bottom: 4px;
+  font-family: var(--font-sf);
+}
+
+/* 72px Hero Headline (Vanguard Font Preserved) */
+.hero-headline {
+  font-family: var(--font-hero);
+  font-size: clamp(50px, 5vw, 68px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.0;
+  color: #FFFFFF;
+  margin-bottom: 4px;
+}
+
+/* Non-italic SF Pro Subline */
+.editorial-caption {
+  font-family: var(--font-sf);
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  color: var(--ink-mid);
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* Original SiriWave Canvas Stage — Smooth Pop-up / Pop-down Motion */
+.wave-container {
+  width: 360px;
+  height: 0;
+  max-height: 0;
+  opacity: 0;
+  transform: scale(0.8) translateY(-10px);
+  margin: 0 auto;
+  position: relative;
+  border-radius: 20px;
+  background: #000000;
+  overflow: hidden;
+  pointer-events: none;
+  transition: max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+              height 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.35s ease,
+              transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+              margin 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.is-recording .wave-container {
+  height: 180px;
+  max-height: 180px;
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  margin: 14px auto 0;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.voice-orb {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 20px;
+  background: #000000;
+  pointer-events: none !important;
+}
+
+/* Voice Control Bar Placed BELOW the Orb */
+.voice-bar-below {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* Reduced White Button (36px) */
+.pulse-record-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  background: #FFFFFF;
+  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.25);
+}
+
+.pulse-record-btn.is-idle {
+  background: #FFFFFF;
+  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.25);
+}
+
+.pulse-record-btn.is-idle:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 18px rgba(255, 255, 255, 0.4);
+}
+
+.pulse-record-btn.is-recording {
+  background: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.5), 0 4px 16px rgba(255, 255, 255, 0.5);
+  animation: pulseButton 1.2s infinite;
+}
+
+.pulse-record-btn.is-processing {
+  background: #E4E4E7;
+  opacity: 0.7;
+  cursor: wait;
+}
+
+@keyframes pulseButton {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.5), 0 4px 16px rgba(255, 255, 255, 0.5); }
+  50% { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.7), 0 6px 20px rgba(255, 255, 255, 0.7); }
+}
+
+.icon-idle {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #0A0A0C;
+}
+
+.icon-recording {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: #EF4444;
+}
+
+.voice-status-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.voice-status-title {
+  font-family: var(--font-sf);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.recording-duration {
+  font-family: monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: #EF4444;
+  letter-spacing: 0.05em;
+}
+
+/* =============================================================
+   SECTION 2: METRICS STRIP (Vanguard Latency, SF Pro Labels)
+   ============================================================= */
+.metrics-bar {
+  height: 80px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--ink-faint);
+  padding: 0 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  font-family: var(--font-sf);
+}
+
+/* LEFT SIDE: Big Latency (56px Vanguard White) */
+.metrics-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.latency-row {
+  display: flex;
+  align-items: top;
+  gap: 4px;
+}
+
+.big-latency {
+  font-family: var(--font-hero);
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 1.0;
+  color: #FFFFFF;
+  letter-spacing: -0.03em;
+}
+
+.latency-unit {
+  font-family: var(--font-hero);
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--ink-mid);
+  vertical-align: top;
+  margin-top: 4px;
+}
+
+.latency-sub {
+  font-family: var(--font-sf);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-mid);
+  text-transform: uppercase;
+  letter-spacing: +0.04em;
+  margin-top: 4px;
+}
+
+/* RIGHT SIDE: Pipeline Stages Horizontal Row */
+.timeline {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  list-style: none;
+  font-family: var(--font-sf);
+}
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 8px White Circle Dot */
+.node {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  transition: background-color 0.2s ease;
+}
+
+/* Active / Captured stage dot */
+.stage.is-active .node,
+.stage.is-success .node {
+  background: var(--accent);
+}
+
+.stage.is-refusal .node {
+  background: #C75468;
+}
+
+/* 10px Stage Name Label */
+.stage-name {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: +0.04em;
+  text-transform: uppercase;
+  color: var(--ink-mid);
+  font-family: var(--font-sf);
+}
+
+/* 12px Stage Value */
+.ms-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #FFFFFF;
+  font-family: var(--font-sf);
+}
+
+/* =============================================================
+   SECTION 3: ANSWER SURFACE (SF Pro text throughout)
+   ============================================================= */
+.answer-surface {
+  flex: 1;
+  position: relative;
+  background: var(--bg);
+  padding: 20px 48px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-family: var(--font-sf);
+}
+
+/* Two-Column Layout (65% / 35%) */
+.two-col-layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 65fr 35fr;
+  gap: 48px;
+  align-items: start;
+}
+
+/* Left Column (65%) */
+.col-left {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.text-query {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--ink-faint);
+  padding-bottom: 8px;
+}
+
+.text-query input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 400;
+  color: #FFFFFF;
+  font-family: var(--font-sf);
+}
+
+.text-query input::placeholder {
+  color: var(--ink-mid);
+}
+
+.text-query button {
+  background: transparent;
+  border: none;
+  font-size: 15px;
+  color: #FFFFFF;
+  cursor: pointer;
+}
+
+/* Probe Tabs */
+.probe-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 2px;
+}
+
+.guardrail-chip {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: +0.04em;
+  text-transform: uppercase;
+  color: var(--ink-mid);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  padding: 2px 0 4px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  font-family: var(--font-sf);
+}
+
+.guardrail-chip.is-active,
+.guardrail-chip:hover {
+  color: #FFFFFF;
+  border-bottom: 1px solid var(--accent);
+}
+
+/* 20px White Section Labels */
+.section-label {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #FFFFFF;
+  margin-bottom: 4px;
+  font-family: var(--font-sf);
+}
+
+.transcript-block {
+  margin-top: 12px;
+}
+
+/* 15px Transcript Text */
+.transcript-text {
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--ink-mid);
+  font-family: var(--font-sf);
+}
+
+.transcript-text.is-partial {
+  color: #FFFFFF;
+  font-style: normal;
+}
+
+.answer-card {
+  margin-top: 10px;
+}
+
+/* 15px Answer Text */
+.answer-body-text {
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: #FFFFFF;
+  font-family: var(--font-sf);
+}
+
+.answer-instruction {
+  font-size: 15px;
+  color: var(--ink-mid);
+  font-family: var(--font-sf);
+}
+
+/* 12px Evidence Header & 13px Evidence Snippets */
+.evidence-header {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: +0.04em;
+  text-transform: uppercase;
+  color: var(--ink-mid);
+  margin-top: 16px;
+  margin-bottom: 6px;
+  font-family: var(--font-sf);
+}
+
+.source-snippet {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--ink-mid);
+  font-family: var(--font-sf);
+}
+
+/* Right Column (35%, padding-left: 48px, white hairline border-left) */
+.col-right {
+  padding-left: 48px;
+  border-left: 1px solid var(--ink-faint);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  font-family: var(--font-sf);
+}
+
+/* 12px Meta Labels */
+.meta-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: +0.04em;
+  text-transform: uppercase;
+  color: var(--ink-mid);
+  font-family: var(--font-sf);
+}
+
+/* Latency History Bars */
+.history-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.history-bar {
+  height: 4px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 2px;
+  transition: width 0.3s ease, background-color 0.2s ease;
+}
+
+.history-bar:last-child {
+  background: #FFFFFF;
+}
+
+.history-bar.is-refusal {
+  background: #C75468;
+}
+
+.status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-key {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-mid);
+  font-family: var(--font-sf);
+}
+
+.status-val {
+  font-size: 11px;
+  font-weight: 600;
+  color: #FFFFFF;
+  text-transform: uppercase;
+  font-family: var(--font-sf);
+}
+
+/* =============================================================
+   SECTION 4: FOOTER (SF Pro font, Task #2 right text)
+   ============================================================= */
+.telemetry-footer {
+  height: 48px;
+  background: var(--bg);
+  border-top: 1px solid var(--ink-faint);
+  padding: 0 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: +0.04em;
+  text-transform: uppercase;
+  color: var(--ink-mid);
+  flex-shrink: 0;
+  font-family: var(--font-sf);
+}
+
+.footer-center {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.status-dot.is-checking { animation: blink 1.2s infinite; }
+.status-dot.is-healthy  { background: var(--accent); }
+.status-dot.is-error    { background: var(--ink-mid); }
+
+@keyframes blink {
+  50% { opacity: 0.35; }
+}
+
+@media (max-height: 720px) {
+  .hero-section { padding: 12px 32px 6px; }
+  .wave-container { width: 320px; height: 160px; }
+  .hero-headline { font-size: 48px; }
+  .metrics-bar { height: 68px; padding: 0 32px; }
+  .big-latency { font-size: 48px; }
+  .answer-surface { padding: 12px 32px; }
+}
