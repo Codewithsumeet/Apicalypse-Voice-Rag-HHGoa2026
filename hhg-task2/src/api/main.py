@@ -37,29 +37,26 @@ from src.guardrails.unsafe_input import UnsafeInputGuardrail
 from src.guardrails.coverage import CoverageGuardrail
 from src.guardrails.grounding import GroundingGuardrail
 from src.guardrails.language_consistency import LanguageConsistencyGuardrail
+import asyncio
+import numpy as np
 from src.guardrails.answerability import AnswerabilityGuardrail
 from src.harness.pipeline import RAGPipeline
 
 logger = structlog.get_logger(__name__)
 
-# Global pipeline instance (initialized at startup)
+# Global pipeline instance & synchronization lock
 pipeline: RAGPipeline | None = None
+_init_lock = asyncio.Lock()
+_init_complete = False
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifecycle — startup and shutdown hooks."""
+def _sync_init_components(app: FastAPI):
+    """Synchronous heavy component loading executed in background worker thread."""
     global pipeline
-
-    logger.info("app_starting", env=settings.app_env)
-
-    # Initialize all services
-    stt = ElevenLabsSTT()
-    embedding_service = EmbeddingService()
-
-    # Load embedding model (heavy — do once at startup)
     logger.info("loading_embedding_model")
+    embedding_service = EmbeddingService()
     embedding_service.load_model()
+    
     warmup_start = time.perf_counter()
     embedding_service.encode_query("warmup")
     logger.info(
@@ -67,51 +64,31 @@ async def lifespan(app: FastAPI):
         duration_ms=round((time.perf_counter() - warmup_start) * 1000, 2),
     )
 
-    # Connect to the resident local index; no cloud vector service is required.
+    stt = ElevenLabsSTT()
     store = LocalNumpyStore()
     store.connect()
-    fast_store = FastSparseStore(store)
-    logger.info("fast_sparse_ready", vectors=fast_store.vector_count)
 
-    # Initialize LLMs
     llm_primary = GroqLLM()
     llm_fallback = OpenAILLM() if settings.openai_api_key else None
 
     # Initialize guardrails
     off_topic = OffTopicGuardrail(embedding_service=embedding_service, threshold=0.10)
+    if len(store.embeddings) > 0:
+        # Efficiently compute centroid from in-memory indexed vectors without extra parquet loading
+        off_topic.set_centroid(np.mean(store.embeddings, axis=0))
+        logger.info("off_topic_centroid_set_from_store", vectors=len(store.embeddings))
+
     unsafe = UnsafeInputGuardrail()
     coverage = CoverageGuardrail(threshold=0.15, semantic_threshold=0.40)
     grounding = GroundingGuardrail(embedding_service=embedding_service, threshold=0.40)
-    
-    # Initialize language-aware guardrails explicitly
-    # Language consistency: reject language mismatches between query and evidence
     language_consistency = LanguageConsistencyGuardrail(allow_fallback=False)
-    
-    # Answerability: verify evidence answers the specific question asked
     answerability = AnswerabilityGuardrail(min_answerability=0.40)
 
-    # Compute dataset centroid for off-topic guardrail at startup (multilingual)
-    try:
-        import pandas as pd
-        data_path = Path("data/msmarco_xi_train.parquet")
-        if data_path.exists():
-            df = pd.read_parquet(data_path)
-            eng_samples = df["Eng_Query"].dropna().head(100).tolist() if "Eng_Query" in df.columns else []
-            hin_samples = df["query"].dropna().head(100).tolist()
-            sample_queries = eng_samples + hin_samples
-            if sample_queries:
-                sample_embeddings = [embedding_service.encode_query(q) for q in sample_queries]
-                off_topic.compute_centroid(sample_embeddings)
-                logger.info("computed_off_topic_centroid", samples=len(sample_queries))
-    except Exception as e:
-        logger.warning("failed_to_compute_centroid", error=str(e))
-
-    # Build pipeline with all guardrails explicitly passed
+    # Build pipeline with all guardrails
     pipeline = RAGPipeline(
         stt_provider=stt,
         embedding_service=embedding_service,
         vector_store=store,
-        fast_store=fast_store,
         llm_primary=llm_primary,
         llm_fallback=llm_fallback,
         off_topic_guardrail=off_topic,
@@ -122,19 +99,55 @@ async def lifespan(app: FastAPI):
         answerability_guardrail=answerability,
     )
 
-    # Store pipeline in app state for route access
+    # Store in app state
     app.state.pipeline = pipeline
     app.state.embedding_service = embedding_service
     app.state.store = store
+    app.state.stt = stt
+    app.state.llm_primary = llm_primary
+    app.state.llm_fallback = llm_fallback
 
-    logger.info("app_ready", pipeline="initialized")
 
+async def _init_rag_pipeline(app: FastAPI):
+    """Asynchronous background initialization of heavy RAG components."""
+    global _init_complete
+    if _init_complete:
+        return
+    async with _init_lock:
+        if _init_complete:
+            return
+        await asyncio.to_thread(_sync_init_components, app)
+        _init_complete = True
+        logger.info("app_ready", pipeline="initialized")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifecycle — startup and shutdown hooks."""
+    logger.info("app_starting", env=settings.app_env)
+    
+    # Initialize empty state placeholders
+    app.state.pipeline = None
+    app.state.embedding_service = None
+    app.state.store = None
+
+    # Kick off background initialization task without blocking the HTTP listener
+    init_task = asyncio.create_task(_init_rag_pipeline(app))
+
+    # Yield immediately so Uvicorn can open port and answer /health right away
     yield
 
     # Shutdown
     logger.info("app_shutting_down")
-    await stt.close()
-    await llm_primary.close()
+    if not init_task.done():
+        init_task.cancel()
+    stt = getattr(app.state, "stt", None)
+    if stt:
+        await stt.close()
+    llm_primary = getattr(app.state, "llm_primary", None)
+    if llm_primary:
+        await llm_primary.close()
+    llm_fallback = getattr(app.state, "llm_fallback", None)
     if llm_fallback:
         await llm_fallback.close()
 
