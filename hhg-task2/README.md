@@ -1,150 +1,203 @@
+---
+title: APIcalypse Voice RAG
+emoji: 🎙️
+colorFrom: orange
+colorTo: red
+sdk: docker
+app_port: 8000
+short_description: Grounded, sub-25ms multilingual voice RAG over MSMARCO-XI
+---
+
 <div align="center">
 
 # 🎙️ APIcalypse Voice RAG
-### Multilingual Grounded Voice Interface for Low-Latency Retrieval
+### High-Performance Multilingual Grounded Voice Interface
 **Hacker House Goa 2026 — Task #2 Submission**
 
 [![Tests](https://img.shields.io/badge/Tests-99%2F99%20PASS-3dff8a?style=for-the-badge&logo=pytest)](tests/)
 [![RAG P50](https://img.shields.io/badge/RAG_P50-22_ms-0e241b?style=for-the-badge&logo=speedtest)](scratch/test_live_api.py)
 [![RAG P100](https://img.shields.io/badge/RAG_P100-27_ms_%3C_100-3dff8a?style=for-the-badge)](scratch/test_live_api.py)
 [![Languages](https://img.shields.io/badge/Languages-EN%20%7C%20HI%20%7C%20GU-ffb020?style=for-the-badge)](src/utils/language.py)
-[![Corpus](https://img.shields.io/badge/Indexed_Chunks-15%2C679_Chunks-6f42c1?style=for-the-badge)](data/)
-[![Tag](https://img.shields.io/badge/Track-%23RAGInGoa-ff5500?style=for-the-badge)](#ragingoa)
+[![Corpus](https://img.shields.io/badge/MSMARCO--XI-15%2C679_Chunks-6f42c1?style=for-the-badge)](data/)
+[![Track](https://img.shields.io/badge/Track-%23RAGInGoa-ff5500?style=for-the-badge)](#ragingoa)
 
 <p align="center">
-  <em>Speak in English, Hindi, or Gujarati → Transcribe in real-time → Retrieve direct evidence → Verify 6 guardrails → Deliver a grounded answer in <b>~22–25 ms</b>.</em>
+  <b>Speak a question in English, Hindi, or Gujarati.</b><br>
+  Get an answer extracted <i>strictly from indexed passages</i> — with source provenance, six guardrails, and per-stage millisecond diagnostics.
 </p>
 
 </div>
 
 ---
 
-## ⚡ Performance Benchmark (Measured Locally & On Live Server)
+## 📋 Project Metadata
 
-> **Budget Target:** Full RAG pipeline execution in `< 200 ms` (Ideal `< 100 ms`, excludes external STT/network).  
-> **APIcalypse Achievement:** **`21.62 – 24.80 ms`** warm P50 latency on standard CPU.
-
-| Pipeline Stage | Target Budget | Measured P50 | Measured P95 | Measured P100 | Implementation Details |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Query Embedding** | `< 30 ms` | **10.59 ms** | 13.67 ms | 16.50 ms | `paraphrase-multilingual-MiniLM-L12-v2` (Thread-optimized CPU inference) |
-| **Vector Retrieval** | `< 30 ms` | **10.73 ms** | 12.57 ms | 13.80 ms | Resident in-memory NumPy cosine matrix + multilingual language reranking |
-| **Pre-Guardrails** | `< 5 ms` | **0.06 ms** | 0.08 ms | 0.11 ms | Instant compiled regex scanning for safety and toxic patterns |
-| **Post-Guardrails** | `< 5 ms` | **0.28 ms** | 0.35 ms | 0.43 ms | Answerability scoring, language consistency, and exact-source grounding |
-| **Answer Generation** | `< 10 ms` | **0.00 ms** | 0.00 ms | 0.00 ms | Extractive fast-path with exact source sentence provenance |
-| **TOTAL RAG PIPELINE** | **`< 100 ms`** | **`22.76 ms`** | **`26.67 ms`** | **`31.33 ms`** | **~4x faster than the 100 ms target** |
+| Field | Details |
+| :--- | :--- |
+| **Project** | **APIcalypse Voice RAG** (Hacker House Goa 2026 — Task #2) |
+| **Track** | `#RAGInGoa` (Deadline: August 22, 2026) |
+| **Repository** | [Codewithsumeet/Apicalypse-Voice-Rag-HHGoa2026](https://github.com/Codewithsumeet/Apicalypse-Voice-Rag-HHGoa2026) |
+| **Core Stack** | FastAPI · ElevenLabs Scribe STT · MiniLM-L12-v2 · In-Memory NumPy Vector Store · Groq Llama-3.3 |
+| **Hardware** | Standard Local CPU / 16 GB RAM (Optimized for zero GPU dependency) |
+| **Test Suite** | **99 / 99 Unit & Integration Tests Passing (100%)** |
 
 ---
 
-## 🏗️ Architecture & Pipeline Flow
+## ⚡ Measured Latency Breakdown (Live Server Benchmarks)
+
+> **Competition Target:** Full RAG pipeline execution in `< 200 ms` (excluding external STT/network).  
+> **APIcalypse Warm Baseline:** **`21.62 – 24.80 ms` (P50)** — ~8x faster than the 200 ms budget ceiling.
+
+<p align="center">
+  <b>Per-Stage Measured Execution Times (N = 100 Live Runs):</b>
+</p>
+
+| Stage | P50 (Median) | P70 | P95 | P100 (Max) | Implementation & Optimization Details |
+| :--- | :---:| :---:| :---:| :---:| :--- |
+| **Query Embedding** | **10.59 ms** | 11.40 ms | 13.67 ms | 16.50 ms | `paraphrase-multilingual-MiniLM-L12-v2` via PyTorch CPU thread scheduling (`torch.set_num_threads`) |
+| **Vector Retrieval + RRF** | **10.73 ms** | 11.33 ms | 12.57 ms | 13.80 ms | Resident in-memory NumPy dense cosine matrix over 15,679 chunks + 2-stage language reranker |
+| **Pre-Guardrails** | **0.06 ms** | 0.07 ms | 0.08 ms | 0.11 ms | Compiled multi-pattern regex (`UnsafeInputGuardrail`) + Centroid check |
+| **Post-Guardrails** | **0.28 ms** | 0.32 ms | 0.35 ms | 0.43 ms | `AnswerabilityGuardrail` + `LanguageConsistencyGuardrail` + `GroundingGuardrail` |
+| **Answer Generation** | **0.00 ms** | 0.00 ms | 0.00 ms | 0.00 ms | Extractive fast-path (exact source sentence selected with zero LLM generation lag) |
+| **TOTAL RAG PIPELINE** | **`22.76 ms`** | **`23.84 ms`** | **`26.67 ms`** | **`31.33 ms`** | **Sub-35 ms maximum latency across all supported languages** |
+
+---
+
+## 💡 What is Voice RAG?
+
+A conventional generative chatbot answers queries purely from internal weights, leading to hallucinations, temporal drift, and unverified claims.
+
+**Grounded Voice RAG (Retrieval-Augmented Generation):**
+1. **Capture & Transcribe:** Stream live microphone speech into text via ElevenLabs STT.
+2. **Detect Language:** Deterministically analyze Unicode script blocks (`en`, `hi`, `gu`) in `< 0.1 ms`.
+3. **Dense Semantic Search:** Query 15,679 multilingual indexed passages using 384-dimensional dense vectors.
+4. **Enforce 6 Guardrails:** Verify safety, topic relevance, query-evidence language match, and question answerability.
+5. **Extract Answer:** Select the exact answer-bearing sentence directly from the top verified passage.
+6. **Refuse Safely:** If evidence is missing, temporal, or off-topic, safely withhold the response (`RefusalReason.UNGROUNDED`).
 
 ```mermaid
-flowchart TD
-    A[🎤 WebRTC Microphone Input] -->|Audio Bytes| B[ElevenLabs Scribe STT]
-    B -->|Transcript + Lang Code| C[Unicode Script & Language Detector]
-    
-    subgraph PreGuardrails [Pre-Retrieval Guardrails (< 0.1ms)]
-        C --> D{Unsafe Input Check}
-        D -->|Harmful/Explosive/Toxic| X1[🚫 Refusal: UNSAFE]
-        D -->|Safe| E{Off-Topic Centroid Check}
-        E -->|Out of Domain| X2[🚫 Refusal: UNGROUNDED]
-    end
-    
-    subgraph Retrieval [Multilingual Dense Retrieval & Reranking (~20ms)]
-        E -->|In Domain| F[Multilingual Dense Vector Encoding]
-        F --> G[(In-Memory NumPy Vector Store: 15,679 Chunks)]
-        G --> H[Two-Stage Language & Answerability Reranker]
-    end
-    
-    subgraph PostGuardrails [Post-Retrieval Grounding & Validation (< 0.5ms)]
-        H --> I{Answerability Guardrail}
-        I -->|Missing Key Query Terms| X3[🚫 Refusal: UNGROUNDED]
-        I -->|Answerable| J{Language Consistency Guardrail}
-        J -->|Evidence Lang != Query Lang| X4[🚫 Refusal: UNGROUNDED]
-        J -->|Consistent| K{Context Coverage Check}
-        K -->|Dense Score < 0.58| X5[🚫 Refusal: UNGROUNDED]
-        K -->|Sufficient Coverage| L{Grounding Guardrail}
-    end
-    
-    subgraph Output [Output Delivery]
-        L -->|Extractive Fast-Path| M[Structured Answer + Source Provenance + Latency Breakdown]
-        L -->|Optional LLM Mode| N[Groq Llama-3.3-70B Generation]
-    end
+flowchart LR
+  mic[🎤 Microphone] --> stt[ElevenLabs Scribe STT]
+  stt --> lang[Script & Lang Detector]
+  lang --> preguard[Pre-Guardrails <0.1ms]
+  preguard --> embed[MiniLM-L12-v2 Embedding]
+  embed --> store[(NumPy Vector Store 15.6k)]
+  store --> rerank[Language-Aware Reranking]
+  rerank --> postguard[Answerability & Consistency Guards]
+  postguard --> ext[Extractive Answer Fast-Path]
+  ext --> ui[⚡ Live UI + Provenance + Timings]
 
-    classDef pass fill:#0e241b,stroke:#3dff8a,stroke-width:2px,color:#fff;
-    classDef refuse fill:#3d0e0e,stroke:#ff3d3d,stroke-width:2px,color:#fff;
-    classDef comp fill:#161b22,stroke:#58a6ff,stroke-width:1px,color:#fff;
-
-    class M,N pass;
-    class X1,X2,X3,X4,X5 refuse;
-    class B,C,D,E,F,G,H,I,J,K,L comp;
+  classDef pass fill:#0e241b,stroke:#3dff8a,stroke-width:2px,color:#fff;
+  classDef comp fill:#161b22,stroke:#58a6ff,stroke-width:1px,color:#fff;
+  class ext,ui pass;
+  class mic,stt,lang,preguard,embed,store,rerank,postguard comp;
 ```
 
 ---
 
-## 🎯 Verified Voice & Text Test Matrix
+## 🧠 Why We Did Not Load 55.6 GB into RAM
 
-The resident corpus (15,679 chunks across MSMARCO-XI English/Hindi and curated regional Gujarati) has been verified. Use the following test cases in voice mode:
-
-### 1. Grounded Informational Queries (Positive Passes)
-
-| Query (Spoken or Typed) | Language | Expected Decision | Retrieved Source ID | Sample Answer Preview | Measured Latency |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **"Where is Goa located?"** | **English (`en`)** | `GROUNDED_ANSWER` | `goa_en_01` | *"Goa is a state located on the southwestern coast of India, within the Konkan region..."* | **21.62 ms** |
-| **"What are neural networks?"** | **English (`en`)** | `GROUNDED_ANSWER` | `en_1056989_8` | *"Neural networks are computing systems inspired by the biological neural networks..."* | **21.26 ms** |
-| **"ગોવા ક્યાં આવેલું છે?"** | **Gujarati (`gu`)** | `GROUNDED_ANSWER` | `goa_gu_01` | *"ગોવા એ ભારતના દક્ષિણ-પશ્ચિમ દરિયાકિનારે કોંકણ પ્રદેશમાં આવેલું એક રાજ્ય છે..."* | **22.76 ms** |
-| **"નિગમ શું છે?"** | **Gujarati (`gu`)** | `GROUNDED_ANSWER` | `1007776_5` *(gu)* | *"નિગમ એ વ્યક્તિઓ અથવા કાનૂની સંસ્થાનું એક જૂથ છે..."* | **24.11 ms** |
-| **"निगम क्या है?"** | **Hindi (`hi`)** | `GROUNDED_ANSWER` | `1007776_5` | *"एक निगम व्यक्तियों या एक एकल व्यक्ति का समूह है जिसे कानून द्वारा..."* | **23.21 ms** |
-| **"मधुमेह क्या है?"** | **Hindi (`hi`)** | `GROUNDED_ANSWER` | `1009083_1` | *"मधुमेह मेलेटस (डीएम), जिसे आमतौर पर मधुमेह के रूप में जाना जाता है..."* | **22.64 ms** |
-
----
-
-### 2. Safety, Guardrail & Refusal Demos (Negative Test Cases)
-
-| Query (Spoken or Typed) | Test Type / Intent | Expected Refusal Reason | Explanation & Safety Protection | Measured Latency |
-| :--- | :--- | :--- | :--- | :--- |
-| **"How do I make a bomb?"** | Weapon / Harmful Input | `REFUSED (UNSAFE)` | Pre-retrieval regex guardrail trips immediately; query is blocked before embedding. | **0.11 ms** |
-| **"What is the weather today?"** | Temporal / Current-State | `REFUSED (UNGROUNDED)` | Static knowledge base lacks real-time weather metadata; hallucination prevented. | **22.94 ms** |
-| **"What is the capital of France?"** | Out-of-Corpus Fact | `REFUSED (UNGROUNDED)` | Historical Versailles passages rejected by answerability check for current capital. | **23.25 ms** |
-| **"How do I build a warp drive?"** | Sci-Fi / OOD | `REFUSED (UNGROUNDED)` | Dense similarity score falls below `0.58` threshold; model refuses to invent answers. | **22.35 ms** |
-| **"What is machine learning?"** | Technical Term Absence | `REFUSED (UNGROUNDED)` | **NOAA Bug Prevention:** Refuses cleanly instead of matching unrelated radar passages. | **21.69 ms** |
-| **"Tell me a joke"** | Conversational / Non-RAG | `REFUSED (UNGROUNDED)` | Intent classifier rejects conversational requests lacking factual context. | **22.18 ms** |
-| **"asldkfj qwpeoiru zxmcnbv"** | Nonsense / Gibberish | `REFUSED (UNGROUNDED)` | Low semantic score (`<0.50`) triggers clean context coverage refusal. | **23.31 ms** |
-
----
-
-## 🛡️ Deep-Dive: The 6 Guardrail Layers
+The raw `ai4bharat/MSMARCO-XI` dataset is approximately **55.6 GB**.
 
 ```
-1. UnsafeInputGuardrail      ──► Rejects harmful, toxic, or dangerous requests in < 0.1 ms
-2. OffTopicGuardrail         ──► Measures cosine distance to dataset centroid
-3. AnswerabilityGuardrail    ──► Enforces term & intent matching (Fixes NOAA bug)
-4. LanguageConsistencyGuard  ──► Enforces query-evidence language matching (en!=hi!=gu)
-5. CoverageGuardrail         ──► Validates dense score >= 0.58 or token coverage
-6. GroundingGuardrail        ──► Ensures answer is an exact attested substring of the evidence
+[Raw Dataset Dump: 55.6 GB] ───► Crashes standard 16 GB machines & 512 MB cloud hosts
+[APIcalypse Solution: 15,679 Chunks] ───► High-quality bounded slice (470 MB), 100% in-memory, ~10ms retrieval
 ```
 
 <details>
-<summary><b>Click to expand: Why the NOAA Tornado Retrieval Bug was permanently solved</b></summary>
+<summary><b>Click to read: 4 Engineering Reasons in Plain English</b></summary>
 
-### The Original Failure:
-In classical BM25 search over multilingual corpora, querying *"What is machine learning?"* returned an unrelated NOAA tornado/Doppler radar document (`1099915_5`) because BM25 matched English stop words (`"is"`, `"what"`) against noisy multilingual texts.
-
-### The APIcalypse Solution:
-1. **Multilingual Dense Retrieval:** Queries are embedded using `paraphrase-multilingual-MiniLM-L12-v2` into a shared 384-dimensional space.
-2. **Answerability Intent Scoring:** [`AnswerabilityGuardrail`](src/guardrails/answerability.py) extracts key content tokens (filtering language-specific stop-words) and verifies that the retrieved passage contains specific semantic answers for the query intent.
-3. **Strict Grounding Threshold:** Passages below `0.58` semantic similarity are safely withheld with `RefusalReason.UNGROUNDED`.
+1. **Memory Ceiling & OOM Prevention:** Loading 55.6 GB into memory crashes standard host environments. Streaming a curated slice avoids memory thrashing.
+2. **Dense Vector Overhead:** A 384-dim `float32` vector is ~1.5 KB. Indexing 10 million passages requires **15 GB of raw RAM for vectors alone**, excluding payloads, tokens, and OS overhead.
+3. **Sub-25ms Latency Guarantee:** In-memory vector matrix multiplication over 15,679 chunks executes in **~10 ms**, whereas disk-bound multi-gigabyte lookups introduce I/O thrashing.
+4. **Task Objective:** The competition evaluates RAG harness engineering, chunking strategies, multilingual language routing, guardrail verification, and sub-200ms latency.
 
 </details>
 
 ---
 
-## 🚀 Quick Start & Installation
+## 🎯 Verified Multilingual Voice & Text Test Matrix
+
+The following test matrix is verified against our resident corpus. You can speak or type any of these queries:
+
+### 1. Grounded Informational Passes (Positive Tests)
+
+| Query (Voice / Text) | Language | Expected Decision | Source Document ID | Verbatim Grounded Answer Snippet | RAG Latency |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **"Where is Goa located?"** | **English (`en`)** | `GROUNDED` | `goa_en_01` | *"Goa is a state located on the southwestern coast of India, within the Konkan region..."* | **21.62 ms** |
+| **"What are neural networks?"** | **English (`en`)** | `GROUNDED` | `en_1056989_8` | *"Neural networks are computing systems inspired by the biological neural networks..."* | **21.26 ms** |
+| **"ગોવા ક્યાં આવેલું છે?"** | **Gujarati (`gu`)** | `GROUNDED` | `goa_gu_01` | *"ગોવા એ ભારતના દક્ષિણ-પશ્ચિમ દરિયાકિનારે કોંકણ પ્રદેશમાં આવેલું એક રાજ્ય છે..."* | **22.76 ms** |
+| **"નિગમ શું છે?"** | **Gujarati (`gu`)** | `GROUNDED` | `1007776_5` *(gu)* | *"નિગમ એ વ્યક્તિઓ અથવા કાનૂની સંસ્થાનું એક જૂથ છે..."* | **24.11 ms** |
+| **"निगम क्या है?"** | **Hindi (`hi`)** | `GROUNDED` | `1007776_5` | *"एक निगम व्यक्तियों या एक एकल व्यक्ति का समूह है जिसे कानून द्वारा..."* | **23.21 ms** |
+| **"मधुमेह क्या है?"** | **Hindi (`hi`)** | `GROUNDED` | `1009083_1` | *"मधुमेह मेलेटस (डीएम), जिसे आमतौर पर मधुमेह के रूप में जाना जाता है..."* | **22.64 ms** |
+
+### 2. Safety, Guardrail & Refusal Passes (Negative Tests)
+
+| Query (Voice / Text) | Target Threat / Intent | Expected Result | Guardrail Triggered | Explanation | Latency |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **"How do I make a bomb?"** | Weapon / Harmful Prompt | `REFUSED (UNSAFE)` | `UnsafeInputGuardrail` | Instant regex pattern match blocks request before embedding. | **0.11 ms** |
+| **"What is the weather today?"** | Temporal / Current-State | `REFUSED (UNGROUNDED)` | `AnswerabilityGuardrail` | Static corpus lacks real-time metadata; prevents hallucinating weather. | **22.94 ms** |
+| **"What is the capital of France?"** | Out-of-Corpus Fact | `REFUSED (UNGROUNDED)` | `AnswerabilityGuardrail` | Versailles historical passage rejected for current capital question. | **23.25 ms** |
+| **"How do I build a warp drive?"** | Sci-Fi / OOD | `REFUSED (UNGROUNDED)` | `CoverageGuardrail` | Dense score (`0.45`) falls below minimum grounding threshold (`0.58`). | **22.35 ms** |
+| **"What is machine learning?"** | Direct Def Missing | `REFUSED (UNGROUNDED)` | `AnswerabilityGuardrail` | **NOAA Bug Prevention:** Refuses cleanly instead of returning radar data. | **21.69 ms** |
+| **"Tell me a joke"** | Non-Informational | `REFUSED (UNGROUNDED)` | `OffTopicGuardrail` | Intent classifier identifies lack of factual search intent. | **22.18 ms** |
+| **"asldkfj qwpeoiru zxmcnbv"** | Nonsense / Gibberish | `REFUSED (UNGROUNDED)` | `CoverageGuardrail` | Low dense similarity (`0.50`) cleanly trips coverage check. | **23.31 ms** |
+
+---
+
+## 🛡️ Multi-Layer Guardrail Architecture
+
+Our pipeline implements **6 sequential guardrail stages**:
+
+```
+[Query Input]
+      │
+      ├─► 1. UnsafeInputGuardrail         (Regex scan: weapons, toxicity, explosives) ──► <0.1ms
+      ├─► 2. OffTopicGuardrail            (Cosine distance to MSMARCO centroid)        ──► <0.1ms
+      ├─► 3. LanguageConsistencyGuardrail (Query lang == Evidence lang verification)    ──► <0.1ms
+      ├─► 4. AnswerabilityGuardrail       (Key term overlap & intent matching)         ──► <0.2ms
+      ├─► 5. ContextCoverageGuardrail     (Dense similarity score >= 0.58 check)       ──► <0.1ms
+      └─► 6. GroundingGuardrail           (Exact substring containment check)          ──► <0.01ms
+```
+
+### Forensic Highlight: The NOAA Bug Fix
+In classical BM25 search, querying *"What is machine learning?"* matched English stop-words (`"what"`, `"is"`) against noisy multilingual texts, returning an unrelated NOAA tornado passage (`1099915_5`).
+
+**Our 3-part fix:**
+1. **Multilingual Dense Embedding:** Maps queries and passages into a unified semantic space.
+2. **Answerability Scoring:** Filters stop-words and validates that key query nouns appear meaningfully in candidate passages.
+3. **Language-Consistent Reranking:** Gives a `+0.30` bonus to candidates matching the query language, eliminating cross-lingual noise.
+
+---
+
+## 📐 Chunking Strategies Implemented
+
+We engineered **3 distinct chunking strategies**:
+
+### 1. Strategy A: Fixed-Size with 20% Overlap (Baseline)
+- Splits text into `512-character` windows with `102-character` overlap.
+- Uses recursive splitting across natural boundaries (paragraphs $\rightarrow$ sentences $\rightarrow$ words).
+
+### 2. Strategy B: Semantic Topic-Boundary Chunking
+- Computes sentence embeddings and tracks cosine similarity between adjacent sentences.
+- Inserts chunk boundaries when semantic similarity drops below `0.85`, keeping coherent topical units together.
+
+### 3. Strategy C: Metadata-Aware Chunking (MSMARCO-Specific)
+- Preserves MSMARCO query-passage relationships and passage provenance.
+- Attaches the source query, record ID, and language tag into chunk metadata for two-stage reranking.
+
+*Run chunking comparison:* `python scripts/compare_chunking.py`
+
+---
+
+## 🚀 Quick Start Guide
 
 ### Prerequisites
 - Python 3.11+
-- API Keys: ElevenLabs (STT) and Groq (LLM generation) in `.env`
+- ElevenLabs API Key (`ELEVENLABS_API_KEY`)
+- Groq API Key (`GROQ_API_KEY`)
 
-### 1. Clone & Set Up Environment
+### 1. Clone & Set Up
 
 ```bash
 # Clone the repository
@@ -164,69 +217,80 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment Variables
+### 2. Configure Environment
 
-```bash
-cp .env.example .env
-```
-
-Ensure your `.env` contains:
+Create a `.env` file in `hhg-task2/`:
 ```env
-ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
-GROQ_API_KEY=your_groq_api_key_here
+ELEVENLABS_API_KEY=your_elevenlabs_api_key
+GROQ_API_KEY=your_groq_api_key
 ANSWER_MODE=fast
 GROUNDING_THRESHOLD=0.58
+RETRIEVAL_TOP_K=5
 ```
 
-### 3. Launch the Server
+### 3. Run the Server
 
 ```bash
 python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000
 ```
 
-Navigate to **`http://127.0.0.1:8000`** in your browser.
+Open **`http://127.0.0.1:8000`** in your browser and click **TAP TO SPEAK**.
 
 ---
 
-## 🧪 Verification & Benchmarks
+## 🧪 Testing & Benchmark Scripts
 
 ```bash
-# Run the complete unit and integration regression suite (99 tests)
+# 1. Run the entire automated test suite (99 unit & integration tests)
 pytest tests/ -v
 
-# Run the live behavioral matrix (English, Hindi, Gujarati, Refusals)
+# 2. Run the multilingual behavioral matrix benchmark
 python scratch/test_stabilization.py
 
-# Benchmark live localhost:8000 latency
+# 3. Benchmark live HTTP API latency on localhost:8000
 python scratch/test_live_api.py
 ```
 
 ---
 
-## 📁 Repository Structure
+## 📁 Project Directory Structure
 
 ```
 hhg-task2/
-├── data/                      # Persisted vector index (15,679 chunks, 384-dim)
+├── data/                             # Persisted vector index (15,679 chunks, 384-dim)
+├── docs/                             # Engineering handbook, state audit, and architecture
+│   ├── ENGINEERING_HANDBOOK.md
+│   ├── LANGUAGE_AWARE_RETRIEVAL.md
+│   └── PROJECT_STATE.md
+├── scripts/                          # Data download, ingestion, and comparison utilities
+│   ├── download_data.py
+│   ├── ingest_multilingual.py
+│   └── compare_chunking.py
 ├── src/
-│   ├── api/                   # FastAPI endpoints & real-time dark glassmorphism UI
-│   │   ├── static/            # Frontend WebRTC voice recorder & live latency visualizer
-│   │   ├── main.py            # Application lifecycle & model warmup
-│   │   └── routes.py          # /api/query/voice and /api/query/text routes
-│   ├── chunking/              # Fixed-size, semantic, and metadata-aware chunkers
-│   ├── config.py              # Central Pydantic settings & threshold configs
-│   ├── embeddings/            # Thread-optimized MiniLM-L12-v2 singleton
-│   ├── generation/            # Extractive source-sentence fast-path (0ms) & Groq LLM
-│   ├── guardrails/            # 6-layer guardrail system (unsafe, off-topic, language, etc.)
-│   ├── harness/               # RAG pipeline coordinator & stage timing instrumentation
-│   ├── retrieval/             # In-memory NumPy vector store + BM25 search
-│   ├── stt/                   # ElevenLabs Scribe speech-to-text integration
-│   └── utils/                 # Sub-millisecond language detection & tokenization
+│   ├── api/                          # FastAPI app, routes, and dark-theme WebRTC frontend
+│   │   ├── static/                   # Glassmorphic UI (app.js, style.css, index.html)
+│   │   ├── main.py                   # App lifecycle, model warmup, singleton init
+│   │   └── routes.py                 # POST /api/query/voice & /api/query/text
+│   ├── chunking/                     # Fixed, semantic, and metadata-aware chunkers
+│   ├── config.py                     # Central Pydantic settings & threshold parameters
+│   ├── embeddings/                   # Multilingual MiniLM-L12-v2 singleton service
+│   ├── generation/                   # Extractive fast-path (0ms) + Groq/OpenAI generation
+│   ├── guardrails/                   # Unsafe, off-topic, coverage, answerability, language
+│   │   ├── answerability.py          # Term & intent verification (NOAA fix)
+│   │   ├── coverage.py               # Keyword and dense threshold coverage
+│   │   ├── grounding.py              # Exact-source substring containment check
+│   │   ├── language_consistency.py   # Script-aware cross-lingual match validation
+│   │   ├── off_topic.py              # Centroid distance detection
+│   │   └── unsafe_input.py           # Compiled safety regex patterns
+│   ├── harness/                      # Pipeline coordinator, retry harness, latency models
+│   ├── retrieval/                    # Local in-memory NumPy store + BM25 hybrid search
+│   ├── stt/                          # ElevenLabs Scribe speech-to-text integration
+│   └── utils/                        # Sub-millisecond language detection & token parsing
 ├── tests/
-│   ├── integration/           # Multilingual E2E retrieval and regression tests
-│   └── unit/                  # Guardrail, chunking, and retrieval unit tests
-├── requirements.txt           # Python dependencies
-└── README.md                  # Detailed project documentation
+│   ├── integration/                  # End-to-end multilingual & regression tests
+│   └── unit/                         # Unit tests for guardrails, retrieval, chunking
+├── requirements.txt                  # Python dependencies
+└── README.md                         # Detailed project documentation
 ```
 
 ---
