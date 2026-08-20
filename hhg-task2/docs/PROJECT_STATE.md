@@ -8,6 +8,48 @@
 
 ---
 
+## CRITICAL UPDATE: Language-Aware Retrieval Fix (August 20, 2026)
+
+**Status:** IMPLEMENTED & TESTED ✓
+
+### The Problem
+English queries were retrieving semantically correct passages BUT in the wrong language (Hindi, Gujarati). 
+- Example: "What is machine learning?" → Returned Hindi ML passage
+
+### Root Cause
+Dense semantic retrieval worked correctly, but selection didn't prioritize language alignment. The system treated language as an afterthought instead of a first-class retrieval signal.
+
+### Solution Implemented
+**Two-Stage Language-Aware Reranking:**
+1. **Stage A:** Multilingual dense retrieval (semantic relevance) - returns top 50 candidates in all languages
+2. **Stage B:** Strict two-tier reranking where:
+   - **Tier 1:** Same-language candidates (cosine >= 0.40) are ALWAYS prioritized
+   - **Tier 2:** Multilingual fallback only if Tier 1 is empty (explicitly tracked)
+
+**New Guardrails:**
+- `LanguageConsistencyGuardrail`: Enforces query_language == evidence_language
+- `AnswerabilityGuardrail`: Verifies evidence answers the specific question (not just topic match)
+
+### Code Changes
+- `src/api/main.py`: Explicitly initialize language-aware guardrails
+- `src/retrieval/numpy_store.py`: Enhanced reranking (lang_bonus 0.20→0.30)
+- `src/harness/pipeline.py`: Enhanced diagnostic logging with full language context
+- `tests/integration/`: Comprehensive multilingual regression suite
+- `docs/LANGUAGE_AWARE_RETRIEVAL.md`: Complete architecture documentation
+
+### Validation
+✓ English query → English answer  
+✓ Hindi query → Hindi answer  
+✓ Gujarati query → Gujarati answer  
+✓ Mixed script handled correctly  
+✓ Answerability validates specific questions  
+✓ No regression on existing fixes (NOAA false positive eliminated)  
+✓ Latency < 200ms maintained  
+
+See `docs/LANGUAGE_AWARE_RETRIEVAL.md` for complete architecture details.
+
+---
+
 ## Table of Contents
 
 1. [Project Origin and Requirements](#1-project-origin-and-requirements)

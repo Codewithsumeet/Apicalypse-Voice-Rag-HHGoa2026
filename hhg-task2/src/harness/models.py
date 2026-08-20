@@ -15,7 +15,8 @@ class LatencyBreakdown(BaseModel):
     guardrail_pre_ms: float = Field(default=0.0, description="Pre-generation guardrail latency")
     generation_ms: float = Field(default=0.0, description="LLM generation latency")
     guardrail_post_ms: float = Field(default=0.0, description="Post-generation grounding check latency")
-    total_ms: float = Field(default=0.0, description="Total end-to-end latency")
+    total_ms: float = Field(default=0.0, description="RAG pipeline total latency (excluding STT/network)")
+    e2e_ms: float = Field(default=0.0, description="Total end-to-end latency including STT")
 
 
 class PipelineResult(BaseModel):

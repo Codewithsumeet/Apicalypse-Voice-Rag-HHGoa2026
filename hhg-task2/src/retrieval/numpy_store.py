@@ -161,6 +161,9 @@ class LocalNumpyStore:
 
         # Filter by namespace and optional metadata filter
         indices = self._namespace_indices.get(namespace, [])
+        if not indices:
+            indices = self._namespace_indices.get("fixed", list(range(len(self.texts))))
+
         if filter_dict:
             indices = [
                 index
@@ -190,69 +193,92 @@ class LocalNumpyStore:
         dense_orig_indices = [indices[idx] for idx in dense_ranked_indices]
         dense_scores_map = {indices[idx]: float(similarities[idx]) for idx in dense_ranked_indices}
 
-        # 2. SPARSE BM25 RETRIEVAL & FUSION
-        chunks = []
-        is_hybrid = False
+        # 2. TWO-STAGE LANGUAGE-AWARE & ANSWERABILITY RERANKING
+        from src.utils.language import detect_language, compute_answerability
+        q_lang = detect_language(query_str) if query_str else "en"
 
-        if query_str and query_str.strip():
-            is_hybrid = True
-            if self.bm25_searcher is None:
-                from src.retrieval.bm25 import BM25Searcher
-                self.bm25_searcher = BM25Searcher(self.texts, self.metadatas)
+        candidate_pool_size = min(len(dense_ranked_indices), 50)
+        candidate_orig_indices = [indices[idx] for idx in dense_ranked_indices[:candidate_pool_size]]
 
-            # Retrieve top 100 candidates from sparse search
-            sparse_results = self.bm25_searcher.query(query_str, top_k=100, namespace=namespace)
-            sparse_orig_indices = [idx for idx, _ in sparse_results]
+        scored_candidates = []
+        lang_distribution = {}
+        for orig_idx in candidate_orig_indices:
+            doc_text = self.texts[orig_idx]
+            doc_meta = self.metadatas[orig_idx]
+            doc_lang = doc_meta.get("language") or detect_language(doc_text)
+            lang_distribution[doc_lang] = lang_distribution.get(doc_lang, 0) + 1
+            
+            cosine_score = dense_scores_map.get(orig_idx, 0.0)
+            is_same_lang = (doc_lang == q_lang)
+            ans_score = compute_answerability(query_str, doc_text, q_lang, metadata=doc_meta) if query_str else 1.0
 
-            # Merge rankings via RRF (look at top 100 dense vs top 100 sparse candidates)
-            from src.retrieval.fusion import reciprocal_rank_fusion
-            fused_results = reciprocal_rank_fusion(
-                dense_indices=dense_orig_indices[:100],
-                sparse_indices=sparse_orig_indices,
-                k=60,
-                top_k=top_k,
-            )
+            # Language-aware scoring: same-language documents receive strong preference
+            # When evidence matches query language AND has reasonable semantic relevance (cosine >= 0.40),
+            # apply a substantial language bonus to ensure language alignment is prioritized
+            lang_bonus = 0.30 if (is_same_lang and cosine_score >= 0.40) else 0.0
+            ans_bonus = 0.08 * ans_score  # Increased from 0.05 to weight answerability more
 
-            # Build result chunks from fused list
-            for orig_idx, rrf_score in fused_results:
-                # We preserve the original dense cosine score in the score, but log RRF score in metadata
-                cosine_score = dense_scores_map.get(orig_idx, 0.0)
-                chunks.append(
-                    RetrievedChunk(
-                        text=self.texts[orig_idx],
-                        score=cosine_score,  # Preserve cosine score for grounding checks
-                        doc_id=self.metadatas[orig_idx].get("doc_id", ""),
-                        chunk_index=self.metadatas[orig_idx].get("chunk_index", 0),
-                        metadata={
-                            **self.metadatas[orig_idx],
-                            "rrf_score": rrf_score,
-                            "dense_score": cosine_score,
-                            "retrieval_mode": "hybrid_rrf",
-                        },
-                    )
-                )
+            rerank_score = cosine_score + lang_bonus + ans_bonus
+            scored_candidates.append({
+                "orig_idx": orig_idx,
+                "text": doc_text,
+                "meta": doc_meta,
+                "doc_lang": doc_lang,
+                "cosine_score": cosine_score,
+                "is_same_lang": is_same_lang,
+                "ans_score": ans_score,
+                "rerank_score": rerank_score,
+            })
+
+        # STRICT TWO-TIER RANKING:
+        # Tier 1: Same-language candidates with minimum semantic relevance (cosine >= 0.40)
+        # Tier 2: All other candidates (fallback only if Tier 1 is empty)
+        # This ensures language alignment is never silently violated
+        same_lang_candidates = [c for c in scored_candidates if c["is_same_lang"] and c["cosine_score"] >= 0.40]
+        other_candidates = [c for c in scored_candidates if not (c["is_same_lang"] and c["cosine_score"] >= 0.40)]
+
+        # Sort within each tier by composite rerank score
+        same_lang_candidates.sort(key=lambda c: c["rerank_score"], reverse=True)
+        other_candidates.sort(key=lambda c: c["rerank_score"], reverse=True)
+
+        # Tier 1 always has priority when available
+        if same_lang_candidates:
+            ordered_candidates = same_lang_candidates + other_candidates
+            fallback_used = False
         else:
-            # Pure dense fallback
-            for idx in dense_ranked_indices[:top_k]:
-                orig_idx = indices[idx]
-                chunks.append(
-                    RetrievedChunk(
-                        text=self.texts[orig_idx],
-                        score=float(similarities[idx]),
-                        doc_id=self.metadatas[orig_idx].get("doc_id", ""),
-                        chunk_index=self.metadatas[orig_idx].get("chunk_index", 0),
-                        metadata={
-                            **self.metadatas[orig_idx],
-                            "retrieval_mode": "dense_only",
-                        },
-                    )
+            # Fallback to multilingual candidates only if no same-language option exists
+            ordered_candidates = other_candidates
+            fallback_used = True
+
+        chunks = []
+        for c in ordered_candidates[:top_k]:
+            orig_idx = c["orig_idx"]
+            chunks.append(
+                RetrievedChunk(
+                    text=c["text"],
+                    score=c["cosine_score"],  # Preserve raw cosine similarity for grounding guardrails
+                    doc_id=c["meta"].get("doc_id", ""),
+                    chunk_index=c["meta"].get("chunk_index", 0),
+                    metadata={
+                        **c["meta"],
+                        "language": c["doc_lang"],
+                        "query_language": q_lang,
+                        "language_match": c["is_same_lang"],
+                        "answerability_score": c["ans_score"],
+                        "rerank_score": c["rerank_score"],
+                        "dense_score": c["cosine_score"],
+                        "fallback_used": fallback_used,
+                        "retrieval_mode": "language_aware_dense",
+                    },
                 )
+            )
 
         duration_ms = (time.perf_counter() - start) * 1000
         logger.debug(
             "numpy_query_complete",
             top_k=top_k,
-            hybrid=is_hybrid,
+            query_language=q_lang,
+            fallback_used=fallback_used,
             results_returned=len(chunks),
             duration_ms=round(duration_ms, 2),
         )

@@ -5,6 +5,12 @@ Configures CORS, static files, startup/shutdown lifecycle,
 and mounts all API routes.
 """
 
+import sys
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 import structlog
 import time
 from contextlib import asynccontextmanager
@@ -30,6 +36,8 @@ from src.guardrails.off_topic import OffTopicGuardrail
 from src.guardrails.unsafe_input import UnsafeInputGuardrail
 from src.guardrails.coverage import CoverageGuardrail
 from src.guardrails.grounding import GroundingGuardrail
+from src.guardrails.language_consistency import LanguageConsistencyGuardrail
+from src.guardrails.answerability import AnswerabilityGuardrail
 from src.harness.pipeline import RAGPipeline
 
 logger = structlog.get_logger(__name__)
@@ -70,18 +78,27 @@ async def lifespan(app: FastAPI):
     llm_fallback = OpenAILLM() if settings.openai_api_key else None
 
     # Initialize guardrails
-    off_topic = OffTopicGuardrail(embedding_service=embedding_service)
+    off_topic = OffTopicGuardrail(embedding_service=embedding_service, threshold=0.10)
     unsafe = UnsafeInputGuardrail()
-    coverage = CoverageGuardrail(threshold=0.15)
-    grounding = GroundingGuardrail(embedding_service=embedding_service)
+    coverage = CoverageGuardrail(threshold=0.15, semantic_threshold=0.40)
+    grounding = GroundingGuardrail(embedding_service=embedding_service, threshold=0.40)
+    
+    # Initialize language-aware guardrails explicitly
+    # Language consistency: reject language mismatches between query and evidence
+    language_consistency = LanguageConsistencyGuardrail(allow_fallback=False)
+    
+    # Answerability: verify evidence answers the specific question asked
+    answerability = AnswerabilityGuardrail(min_answerability=0.40)
 
-    # Compute dataset centroid for off-topic guardrail at startup
+    # Compute dataset centroid for off-topic guardrail at startup (multilingual)
     try:
         import pandas as pd
         data_path = Path("data/msmarco_xi_train.parquet")
         if data_path.exists():
             df = pd.read_parquet(data_path)
-            sample_queries = df["query"].dropna().head(100).tolist()
+            eng_samples = df["Eng_Query"].dropna().head(100).tolist() if "Eng_Query" in df.columns else []
+            hin_samples = df["query"].dropna().head(100).tolist()
+            sample_queries = eng_samples + hin_samples
             if sample_queries:
                 sample_embeddings = [embedding_service.encode_query(q) for q in sample_queries]
                 off_topic.compute_centroid(sample_embeddings)
@@ -89,7 +106,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("failed_to_compute_centroid", error=str(e))
 
-    # Build pipeline
+    # Build pipeline with all guardrails explicitly passed
     pipeline = RAGPipeline(
         stt_provider=stt,
         embedding_service=embedding_service,
@@ -101,6 +118,8 @@ async def lifespan(app: FastAPI):
         unsafe_guardrail=unsafe,
         grounding_guardrail=grounding,
         coverage_guardrail=coverage,
+        language_consistency_guardrail=language_consistency,
+        answerability_guardrail=answerability,
     )
 
     # Store pipeline in app state for route access

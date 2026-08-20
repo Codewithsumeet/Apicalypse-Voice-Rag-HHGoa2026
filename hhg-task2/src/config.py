@@ -49,10 +49,13 @@ class Settings(BaseSettings):
 
     # --- Guardrails ---
     off_topic_threshold: float = Field(
-        default=0.30, description="Cosine similarity threshold below which a query is off-topic"
+        default=0.10, description="Cosine similarity threshold below which a query is off-topic"
     )
     grounding_threshold: float = Field(
-        default=0.7, description="Entailment/similarity threshold for grounding check"
+        default=0.58, description="Entailment/similarity threshold for grounding check"
+    )
+    grounding_threshold_gu: float = Field(
+        default=0.45, description="Calibrated retrieval threshold for Gujarati evidence"
     )
 
     model_config = {

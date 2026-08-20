@@ -52,13 +52,13 @@ class GroundingGuardrail:
                 duration_ms=round(duration_ms, 2),
             )
 
-        if self._embedding_service is None:
-            # If no embedding service, skip the check (fail-open)
+        # Fast path: If the answer is an exact substring of the retrieved context,
+        # it is guaranteed 100% grounded without redundant embedding inference.
+        if answer.strip() and answer.strip() in context:
             duration_ms = (time.perf_counter() - start) * 1000
-            logger.warning("grounding_check_skipped_no_embedding_service")
             return GuardrailResult.pass_result(duration_ms=round(duration_ms, 2))
 
-        # Encode answer and context
+        # Encode answer and context for generated/paraphrased answers
         answer_embedding = np.array(self._embedding_service.encode_query(answer))
         context_embedding = np.array(self._embedding_service.encode_query(context[:2000]))  # Truncate for speed
 

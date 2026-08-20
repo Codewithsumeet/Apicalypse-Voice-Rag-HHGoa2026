@@ -111,6 +111,7 @@ async def voice_query(request: Request, audio: UploadFile = File(...)):
             "generation_ms": result.latency.generation_ms,
             "guardrail_post_ms": result.latency.guardrail_post_ms,
             "total_ms": result.latency.total_ms,
+            "e2e_ms": result.latency.e2e_ms or round(result.latency.stt_ms + result.latency.total_ms, 2),
         },
         retrieved_chunks=result.retrieved_chunks,
     )

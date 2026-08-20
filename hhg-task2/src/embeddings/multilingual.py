@@ -38,6 +38,12 @@ class EmbeddingService:
 
         start = time.perf_counter()
         import torch
+        import os
+
+        # Optimize PyTorch CPU thread allocation for low-latency single-query inference
+        if not torch.cuda.is_available():
+            num_cores = os.cpu_count() or 4
+            torch.set_num_threads(min(12, max(2, num_cores)))
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -45,6 +51,9 @@ class EmbeddingService:
             settings.embedding_model,
             device=device,
         )
+
+        # Warm up JIT and PyTorch execution graph
+        self._model.encode("warmup query", convert_to_numpy=True, show_progress_bar=False)
 
         duration_ms = (time.perf_counter() - start) * 1000
         logger.info(

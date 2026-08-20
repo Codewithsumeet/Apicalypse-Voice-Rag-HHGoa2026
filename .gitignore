@@ -1,4 +1,4 @@
-﻿# Environment / secrets
+# Environment / secrets
 .env
 .env.*
 !.env.example
@@ -18,5 +18,13 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# Customizations / Secrets
+.agents/
+.agent/
+
 # Logs
 *.log
+
+# Scratch / Temp
+scratch/
+hhg-task2/scratch/
