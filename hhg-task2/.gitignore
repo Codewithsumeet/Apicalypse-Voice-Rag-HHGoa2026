@@ -21,10 +21,10 @@ env/
 vault/
 secrets/
 
-# Data files (large, downloaded)
-data/
-*.parquet
-*.jsonl
+# Data files (large pickle and checkpoints)
+data/*.pkl
+data/checkpoints/
+data/temp.parquet
 
 # Agent state (internal tracking)
 agent_state/

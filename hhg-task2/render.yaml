@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: apicalypse-voice-rag
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_HOST
+        value: 0.0.0.0
+      - key: ANSWER_MODE
+        value: fast
+      - key: VECTOR_STORE_TYPE
+        value: local
+      - key: RETRIEVAL_NAMESPACE
+        value: demo_fast
+      - key: RETRIEVAL_TOP_K
+        value: "5"
+      - key: EMBEDDING_MODEL
+        value: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+      - key: EMBEDDING_DIMENSION
+        value: "384"
+      - key: OFF_TOPIC_THRESHOLD
+        value: "0.30"
+      - key: GROUNDING_THRESHOLD
+        value: "0.70"
+      - key: MAX_LATENCY_MS
+        value: "200"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false

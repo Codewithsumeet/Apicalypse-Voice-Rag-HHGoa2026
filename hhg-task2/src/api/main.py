@@ -171,13 +171,18 @@ async def health_check():
 def main():
     """Entry point for running the server."""
     import uvicorn
+    import os
+
+    port = int(os.environ.get("PORT", settings.app_port))
+    host = os.environ.get("HOST", settings.app_host)
 
     uvicorn.run(
         "src.api.main:app",
-        host=settings.app_host,
-        port=settings.app_port,
+        host=host,
+        port=port,
         reload=settings.app_env == "development",
         log_level=settings.log_level.lower(),
+        workers=1,
     )
 
 

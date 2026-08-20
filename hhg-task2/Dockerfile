@@ -1,6 +1,6 @@
 # ============================================
 # HHG Voice RAG — Production Dockerfile
-# Multi-stage build for small final image
+# Multi-stage build for low-latency RAG
 # ============================================
 
 # --- Stage 1: Builder ---
@@ -24,19 +24,30 @@ WORKDIR /app
 # Copy installed packages from builder
 COPY --from=builder /install /usr/local
 
-# Copy application code
+# Pre-cache HuggingFace SentenceTransformer model into image
+ENV HF_HOME=/root/.cache/huggingface
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')"
+
+# Copy application source, scripts, and dataset
 COPY src/ ./src/
 COPY scripts/ ./scripts/
+COPY data/ ./data/
 
-# Create data directory
-RUN mkdir -p /app/data /app/docs
+# Ensure numpy_store.pkl is built and resident in the image
+RUN if [ ! -f data/numpy_store.pkl ]; then \
+        echo "Building LocalNumpyStore index from dataset parquet..." && \
+        python scripts/ingest.py --strategy fixed --max-records 10000 --fresh; \
+    fi
 
-# Expose port
+# Create directories
+RUN mkdir -p /app/docs
+
+# Expose default port
 EXPOSE 8000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import httpx; r = httpx.get('http://localhost:8000/health'); assert r.status_code == 200"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD python -c "import os, httpx; port = os.environ.get('PORT', '8000'); r = httpx.get(f'http://localhost:{port}/health'); assert r.status_code == 200"
 
-# Run the server
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the server with single worker and dynamic port binding
+CMD ["sh", "-c", "uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
