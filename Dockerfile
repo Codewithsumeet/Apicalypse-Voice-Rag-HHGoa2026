@@ -1,6 +1,6 @@
 # ============================================
 # HHG Voice RAG — Production Dockerfile
-# Multi-stage build for low-latency RAG
+# Hugging Face Spaces Docker Deployment
 # ============================================
 
 # --- Stage 1: Builder ---
@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY hhg-task2/requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # --- Stage 2: Runtime ---
@@ -29,17 +29,11 @@ ENV HF_HOME=/root/.cache/huggingface
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')"
 
 # Copy application source, scripts, and dataset
-COPY src/ ./src/
-COPY scripts/ ./scripts/
-COPY data/ ./data/
+COPY hhg-task2/src/ ./src/
+COPY hhg-task2/scripts/ ./scripts/
+COPY hhg-task2/data/ ./data/
 
-# Ensure numpy_store.pkl is built and resident in the image
-RUN if [ ! -f data/numpy_store.pkl ]; then \
-        echo "Building LocalNumpyStore index from dataset parquet..." && \
-        python scripts/ingest.py --strategy fixed --max-records 10000 --fresh; \
-    fi
-
-# Create directories
+# Create docs directory
 RUN mkdir -p /app/docs
 
 # Expose default Hugging Face Spaces port

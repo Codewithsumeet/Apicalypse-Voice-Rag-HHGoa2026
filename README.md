@@ -4,7 +4,7 @@ emoji: 🎙️
 colorFrom: orange
 colorTo: red
 sdk: docker
-app_port: 8000
+app_port: 7860
 short_description: Grounded, sub-25ms multilingual voice RAG over MSMARCO-XI
 ---
 
