@@ -40,10 +40,13 @@ class EmbeddingService:
         import torch
         import os
 
-        # Optimize PyTorch CPU thread allocation for low-latency single-query inference
+        # Optimize PyTorch CPU thread allocation for low-memory container execution
         if not torch.cuda.is_available():
-            num_cores = os.cpu_count() or 4
-            torch.set_num_threads(min(12, max(2, num_cores)))
+            torch.set_num_threads(2)
+            try:
+                torch.set_num_interop_threads(1)
+            except Exception:
+                pass
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
 

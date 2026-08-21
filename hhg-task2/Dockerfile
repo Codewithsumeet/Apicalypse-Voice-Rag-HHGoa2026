@@ -25,7 +25,9 @@ WORKDIR /app
 COPY --from=builder /install /usr/local
 
 # Pre-cache HuggingFace SentenceTransformer model into image
-ENV HF_HOME=/root/.cache/huggingface
+ENV HF_HOME=/root/.cache/huggingface \
+    OMP_NUM_THREADS=2 \
+    MKL_NUM_THREADS=2
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')"
 
 # Copy application source, scripts, and dataset

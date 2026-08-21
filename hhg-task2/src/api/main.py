@@ -48,6 +48,7 @@ logger = structlog.get_logger(__name__)
 pipeline: RAGPipeline | None = None
 _init_lock = asyncio.Lock()
 _init_complete = False
+_init_error: str | None = None
 
 
 def _sync_init_components(app: FastAPI):
@@ -110,15 +111,21 @@ def _sync_init_components(app: FastAPI):
 
 async def _init_rag_pipeline(app: FastAPI):
     """Asynchronous background initialization of heavy RAG components."""
-    global _init_complete
+    global _init_complete, _init_error
     if _init_complete:
         return
     async with _init_lock:
         if _init_complete:
             return
-        await asyncio.to_thread(_sync_init_components, app)
-        _init_complete = True
-        logger.info("app_ready", pipeline="initialized")
+        try:
+            logger.info("rag_background_init_starting")
+            await asyncio.to_thread(_sync_init_components, app)
+            _init_complete = True
+            _init_error = None
+            logger.info("app_ready", pipeline="initialized")
+        except Exception as exc:
+            _init_error = str(exc)
+            logger.error("rag_background_init_failed", error=str(exc), exc_info=True)
 
 
 @asynccontextmanager
@@ -193,11 +200,15 @@ async def serve_frontend():
 @app.get("/health")
 async def health_check():
     """Health check endpoint for deployment monitoring."""
-    return {
+    res = {
         "status": "healthy",
         "version": "0.1.0",
         "env": settings.app_env,
+        "ready": _init_complete,
     }
+    if _init_error:
+        res["init_error"] = _init_error
+    return res
 
 
 def main():

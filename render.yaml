@@ -17,7 +17,7 @@ services:
       - key: VECTOR_STORE_TYPE
         value: local
       - key: RETRIEVAL_NAMESPACE
-        value: demo_fast
+        value: fixed
       - key: RETRIEVAL_TOP_K
         value: "5"
       - key: EMBEDDING_MODEL
@@ -25,9 +25,17 @@ services:
       - key: EMBEDDING_DIMENSION
         value: "384"
       - key: OFF_TOPIC_THRESHOLD
-        value: "0.30"
+        value: "0.10"
       - key: GROUNDING_THRESHOLD
-        value: "0.70"
+        value: "0.58"
+      - key: GROUNDING_THRESHOLD_GU
+        value: "0.45"
+      - key: OMP_NUM_THREADS
+        value: "2"
+      - key: MKL_NUM_THREADS
+        value: "2"
+      - key: TORCH_NUM_THREADS
+        value: "2"
       - key: MAX_LATENCY_MS
         value: "200"
       - key: LOG_LEVEL
